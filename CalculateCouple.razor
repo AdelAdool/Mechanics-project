@@ -1,0 +1,121 @@
+<h4 class="text-primary mb-4">Calculate Couple (Torque)</h4>
+
+<div class="container">
+    <div class="row">
+        <div class="col-md-6 mb-3">
+            <label class="form-label">Force:</label>
+            <input type="text" class="form-control" @bind="force" placeholder="Force" />
+        </div>
+
+        <div class="col-md-6 mb-3">
+            <label class="form-label">Distance between Forces:</label>
+            <input type="text" class="form-control" @bind="distance" placeholder="Distance" />
+        </div>
+
+        <div class="col-md-6 mb-3">
+            <label class="form-label">Angle (degrees) or Sine/Cosine Enter cos and sin in x/y:</label>
+            <div class="input-group">
+                <input type="text" class="form-control" @bind="angle" placeholder="Enter angle in degrees" />
+                <span class="input-group-text">or</span>
+                <input type="text" class="form-control" @bind="sinInput" placeholder="sin" />
+            </div>
+        </div>
+    
+        <div class="col-md-6 mb-3">
+            <label class="form-label">Direction Of Force:</label>
+            <select class="form-control" @bind="direction">
+                <option value="1">+ve (Counterclockwise)</option>
+                <option value="-1">-ve (Clockwise)</option>
+            </select>
+        </div>
+    </div>
+
+    <button class="btn animated-button mt-2" @onclick="CalculateTorque">Add Force and Calculate Couple</button>
+
+    <div class="mt-4 result-box">
+        <p class="fw-bold text-success"><strong>Total Couple (Torque):</strong> @totalTorque</p>
+    </div>
+
+    <h4 class="mt-4">Forces List:</h4>
+    <div class="list-group">
+        @foreach (var f in forces)
+        {
+            <div class="list-group-item">
+                Force: @f.Force, Distance: @f.Distance, Angle: @f.Angle, Torque: @f.Torque
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private double force, distance, angle, totalTorque, sin;
+    private int direction = 1;
+    private List<Forces> forces = new List<Forces>();
+    private string? sinInput;
+
+    private void CalculateTorque()
+    {
+        if (force != 0 && distance != 0 && angle != 0)
+        {
+            Calculate_Components_in_degrees();
+        }
+        else if (force != 0 && distance != 0 && sinInput != null)
+        {
+            Calculate_Components_in_fractions();
+        }
+        totalTorque = 0;
+        foreach (var f in forces)
+        {
+            totalTorque += f.Torque;
+        }
+        totalTorque = Math.Round(totalTorque, 2);
+    }
+
+    private void Calculate_Components_in_degrees()
+    {
+        angle = NormalizeAngle(angle);
+        double radian = Math.PI * angle / 180;
+        double torque = Math.Round(direction * force * distance * Math.Sin(radian), 2);
+        forces.Add(new Forces(force, distance, angle, torque));
+    }
+    
+@* Abd-Allah Nasser*@
+
+    private void Calculate_Components_in_fractions()
+    {
+        double fraction;
+        if (!string.IsNullOrEmpty(sinInput))
+        {
+            var sinParts = sinInput.Split('/');
+            if (sinParts.Length == 2 && double.TryParse(sinParts[0], out double sinNumerator) && double.TryParse(sinParts[1], out double sinDenominator) && sinDenominator != 0)
+            {
+                sin = sinNumerator / sinDenominator;
+            }
+
+            fraction = sin;
+            angle = Math.Round(Math.Asin(fraction) * (180.0 / Math.PI), 2);
+            double torque = Math.Round(direction * force * distance * Math.Sin(Math.PI * angle / 180), 2);
+            forces.Add(new Forces(force, distance, angle, torque));
+        }
+
+        angle = NormalizeAngle(angle);
+    }
+
+    public class Forces
+    {
+        public double Force { get; set; }
+        public double Distance { get; set; }
+        public double Angle { get; set; }
+        public double Torque { get; set; }
+
+        public Forces(double force, double distance, double angle, double torque)
+        {
+            Force = force;
+            Distance = distance;
+            Angle = angle;
+            Torque = torque;
+        }
+    }
+
+    private double NormalizeAngle(double angle) => (angle % 360 + 360) % 360;
+}

@@ -1,0 +1,208 @@
+<h4 class="text-primary mb-4">Vector Resolution</h4>
+
+<div class="container">
+    <div class="row">
+        <div class="col-md-6 mb-3">
+            <label class="form-label">Axis (1 = X-Axis, 2 = Y-Axis):</label>
+            <select class="form-select" @bind="selection">
+                <option value="1">X-Axis</option>
+                <option value="2">Y-Axis</option>
+            </select>
+        </div>
+
+        <div class="col-md-6 mb-3">
+            <label class="form-label">Angle (degrees) or Sine/Cosine Enter cos and sin in x/y:</label>
+            <div class="input-group">
+                <input type="number" class="form-control" @bind="angle" placeholder="Enter angle in degrees" />
+                <span class="input-group-text">or</span>
+                <input type="text" class="form-control" @bind="sinInput" placeholder="sin" />
+                <span class="input-group-text">or</span>
+                <input type="text" class="form-control" @bind="cosInput" placeholder="cos" />
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-3">
+            <label class="form-label">Force:</label>
+            <input type="number" class="form-control" @bind="force" />
+        </div>
+
+        <div class="col-md-6 mb-3">
+            <label class="form-label">Quadrant (1 = A, 2 = S, 3 = T, 4 = C):</label>
+            <select class="form-select" @bind="quad">
+                <option value="1">A</option>
+                <option value="2">S</option>
+                <option value="3">T</option>
+                <option value="4">C</option>
+            </select>
+        </div>
+    </div>
+
+    <button class="btn animated-button mt-2" @onclick="Resolve">Add Force</button>
+    <button class="btn btn-secondary mt-2" @onclick="CalculateDotProducts" disabled="@(!canCalculateDotProduct)">Calculate Dot Products</button>
+</div>
+
+@if(resolvedForces.Count > 0)
+{
+    <h4 class="mt-4">Resolved Forces:</h4>
+    <ul class="list-group">
+        @foreach (var (index, force) in resolvedForces.Select((f, i) => (i + 1, f)))
+        {
+            <li class="list-group-item">Force @index: (@force.fx)i + (@force.fy)j</li>
+        }
+    </ul>
+}
+
+@if(dotProducts != null && dotProducts.Any())
+{
+    <h4 class="mt-4">Dot Product Results:</h4>
+    <ul class="list-group">
+        @foreach (var result in dotProducts)
+        {
+            <li class="list-group-item">@result</li>
+        }
+    </ul>
+}
+
+@if(Sum_Magnitude > 0){
+<div class="mt-4 result-box">
+    <p class="fw-bold text-success">Result: F = (@fx)i + (@fy)j</p>
+</div>
+<h4 class="mt-4">Results:</h4>
+    <div class="list-group">
+        <div class="list-group-item">
+                <p class="fw-bold text-primary">FR = (@Math.Round(sum_x, 2))i + (@Math.Round(sum_y, 2))j</p>
+                <p class="fw-bold text-primary">Magnitude FR = @Math.Round(Sum_Magnitude, 2) N</p>
+                <p class="fw-bold text-primary">Direction FR = @Math.Round(Direction, 2)</p>
+        </div>
+    </div>
+}
+
+@code {
+    private int selection = 1;
+    private double angle, force, sum_x, sum_y, Sum_Magnitude, sin, cos, fx, fy, Direction;
+    private int quad = 1;
+    private string? sinInput, cosInput;
+    private List<(double fx, double fy)> resolvedForces = new();
+    private List<string> dotProducts = new(); 
+    private bool canCalculateDotProduct => resolvedForces.Count >= 2; 
+
+    private void Resolve()
+    {
+        if(sinInput == null && cosInput == null){
+            (fx, fy) = Calculate_Components_in_degrees(selection, angle, force, quad);
+            fx = Math.Round(fx, 2);
+            fy = Math.Round(fy, 2);
+            resolvedForces.Add((fx, fy));
+            sum_x += fx;
+            sum_y += fy;
+        }
+        else if(sinInput != null || cosInput != null){
+            (fx, fy) = Calculate_Components_in_fractions(selection, force, quad);
+            fx = Math.Round(fx, 2);
+            fy = Math.Round(fy, 2);
+            resolvedForces.Add((fx, fy));
+            sum_x += fx;
+            sum_y += fy;
+            sinInput = null;
+            cosInput = null;
+        }
+        Direction = Math.Atan(sum_y / sum_x) * (180.0 / Math.PI);
+        Sum_Magnitude = Math.Round(Math.Sqrt(Math.Pow(sum_x , 2) + Math.Pow(sum_y , 2)), 2);
+    }
+
+    private void CalculateDotProducts()
+    {
+        dotProducts.Clear();
+
+        for (int i = 0; i < resolvedForces.Count; i++)
+        {
+            for (int j = i + 1; j < resolvedForces.Count; j++)
+            {
+                var dotProduct = Math.Round(
+                    resolvedForces[i].fx * resolvedForces[j].fx + resolvedForces[i].fy * resolvedForces[j].fy, 
+                    2
+                );
+
+                dotProducts.Add($"Dot Product of Force {i + 1} and Force {j + 1}: {dotProduct}");
+            }
+        }
+    }
+
+    private (double, double) Calculate_Components_in_degrees(int selection, double angle, double force, int quad)
+    {
+        angle = NormalizeAngle(angle);
+        double radian = Math.PI * angle / 180;
+
+        if (selection == 1)
+        {
+            return quad switch
+            {
+                1 => (force * Math.Cos(radian), force * Math.Sin(radian)),
+                2 => (force * Math.Cos(Math.PI - radian), force * Math.Sin(Math.PI - radian)),
+                3 => (force * Math.Cos(3 * Math.PI / 2 - radian), force * Math.Sin(3 * Math.PI / 2 - radian)),
+                4 => (force * Math.Cos(2 * Math.PI - radian), force * Math.Sin(2 * Math.PI - radian)),
+                _ => (0, 0)
+            };
+        }
+        else if (selection == 2)
+        {
+            return quad switch
+            {
+                1 => (force * Math.Sin(radian), force * Math.Cos(radian)),
+                2 => (force * Math.Sin(Math.PI - radian), force * Math.Cos(Math.PI - radian)),
+                3 => (force * Math.Sin(3 * Math.PI / 2 - radian), force * Math.Cos(3 * Math.PI / 2 - radian)),
+                4 => (force * Math.Sin(2 * Math.PI - radian), force * Math.Cos(2 * Math.PI - radian)),
+                _ => (0, 0)
+            };
+        }
+        return (0, 0);
+    }
+
+    private (double, double) Calculate_Components_in_fractions(int selection, double force, int quad)
+    {
+        if (!string.IsNullOrEmpty(sinInput))
+        {
+            var sinParts = sinInput.Split('/');
+            if (sinParts.Length == 2 && double.TryParse(sinParts[0], out double sinNumerator) && double.TryParse(sinParts[1], out double sinDenominator) && sinDenominator != 0)
+            {
+                sin = sinNumerator / sinDenominator;
+            }
+        }
+
+        if (!string.IsNullOrEmpty(cosInput))
+        {
+            var cosParts = cosInput.Split('/');
+            if (cosParts.Length == 2 && double.TryParse(cosParts[0], out double cosNumerator) && double.TryParse(cosParts[1], out double cosDenominator) && cosDenominator != 0)
+            {
+                cos = cosNumerator / cosDenominator;
+            }
+        }
+
+        double radian = Math.Acos(cos);
+        if (selection == 1)
+        {
+            return quad switch
+            {
+                1 => (force * Math.Cos(radian), force * sin),
+                2 => (force * Math.Cos(Math.PI - radian), force * Math.Sin(Math.PI - radian)),
+                3 => (force * Math.Cos(3 * Math.PI / 2 - radian), force * Math.Sin(3 * Math.PI / 2 - radian)),
+                4 => (force * Math.Cos(2 * Math.PI - radian), force * Math.Sin(2 * Math.PI - radian)),
+                _ => (0, 0)
+            };
+        }
+        else if (selection == 2)
+        {
+            return quad switch
+            {
+                1 => (force * Math.Sin(radian), force * Math.Cos(radian)),
+                2 => (force * Math.Sin(Math.PI - radian), force * Math.Cos(Math.PI - radian)),
+                3 => (force * Math.Sin(3 * Math.PI / 2 - radian), force * Math.Cos(3 * Math.PI / 2 - radian)),
+                4 => (force * Math.Sin(2 * Math.PI - radian), force * Math.Cos(2 * Math.PI - radian)),
+                _ => (0, 0)
+            };
+        }
+        return (0, 0);
+    }
+
+    private double NormalizeAngle(double angle) => (angle % 360 + 360) % 360;
+}

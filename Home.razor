@@ -1,0 +1,28 @@
+﻿@page "/"
+
+<h3 class="text-primary mb-4 text-center">Force Calculator</h3>
+
+<div class="container">
+    <div class="mb-4">
+        <label for="operationSelect" class="form-label">Select Operation:</label>
+        <select id="operationSelect" class="form-select" @bind="selectedOperation">
+            <option value="1">Resolution</option>
+            <option value="2">Calculate Couple</option>
+        </select>
+    </div>
+
+    <div class="fade-in">
+        @if (selectedOperation == "1")
+        {
+            <Resolution />
+        }
+        else if (selectedOperation == "2")
+        {
+            <CalculateCouple />
+        }
+    </div>
+</div>
+
+@code {
+    private string selectedOperation = "1";
+}
